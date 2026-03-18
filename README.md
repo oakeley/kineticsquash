@@ -1,24 +1,39 @@
-# kineticsquash.py — PacBio Subread BAM Pre-conditioner for xz Compression
+# kineticsquash — PacBio Subread BAM Pre-conditioner for xz Compression
 
 A lossless, reversible pre-compression filter for PacBio subread BAM files. It operates as a pipe stage between `samtools view` and `xz`, transforming the SAM byte stream into a binary format that xz can compress significantly more efficiently than either raw SAM or raw BAM.
 
+Python version and RUST version included
+
 ---
 
-## Quick Start
+## Quick Start - python
 
 ```bash
 # Compress
-samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e > subreads.sq9.xz
+samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e > subreads.sq.xz
 
 # Decompress
-xz -d < subreads.sq9.xz | python3 kineticsquash.py -u | samtools view -b - > restored.bam
-
-# Verify round-trip integrity
-samtools view restored.bam | md5sum
-samtools view subreads.bam | md5sum
+xz -d < subreads.sq.xz | python3 kineticsquash.py -u | samtools view -b - > restored.bam
 ```
 
 **Requirements:** Python 3.6+, samtools, xz. No third-party Python packages.
+
+---
+
+## Quick Start - RUST
+
+```bash
+# Compress
+./kineticsquash subreads.bam
+Successfully compressed to subreads.sq.xz
+[output is subreads.sq.xz]
+
+# Decompress
+kineticsquash subreads.sq.xz
+Successfully decompressed to subreads.bam
+```
+
+**Requirements:** Linux OS
 
 ---
 
@@ -39,7 +54,7 @@ kineticsquash addresses all three issues with a binary pre-encoding pass.
 ### Compression
 
 ```bash
-samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e > subreads.sq9.xz
+samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e > subreads.sq.xz
 ```
 
 The `-h` flag to `samtools view` includes the SAM header lines (beginning with `@`), which are required for round-trip reconstruction of a valid BAM. Without `-h`, the header is lost and the restored BAM will be invalid.
@@ -49,7 +64,7 @@ The `-h` flag to `samtools view` includes the SAM header lines (beginning with `
 ### Decompression
 
 ```bash
-xz -d < subreads.sq9.xz | python3 kineticsquash.py -u | samtools view -b - > restored.bam
+xz -d < subreads.sq.xz | python3 kineticsquash.py -u | samtools view -b - > restored.bam
 ```
 
 The decompressed output is valid SAM (text) piped into `samtools view -b` to produce binary BAM. The `-` argument tells samtools to read from stdin.
@@ -59,7 +74,7 @@ The decompressed output is valid SAM (text) piped into `samtools view -b` to pro
 xz is single-threaded by default. For faster compression on multi-core systems:
 
 ```bash
-samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e -T 0 > subreads.sq9.xz
+samtools view -h subreads.bam | python3 kineticsquash.py -c | xz -9e -T 0 > subreads.sq.xz
 ```
 
 `-T 0` uses all available cores. Note that multithreaded xz uses independent LZMA streams per thread, which slightly reduces the compression ratio compared to single-threaded mode because cross-thread dictionary references are not possible.
